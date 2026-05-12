@@ -1,6 +1,6 @@
 # Claude Usage — Stream Deck plugin
 
-Four Stream Deck keys mirroring the **Plan usage limits** panel on `claude.ai/settings/usage`:
+Five Stream Deck keys mirroring the **Plan usage limits** panel on `claude.ai/settings/usage`:
 
 | Key | Shows | Refresh |
 |---|---|---|
@@ -8,6 +8,7 @@ Four Stream Deck keys mirroring the **Plan usage limits** panel on `claude.ai/se
 | **Weekly (All Models)** | `NN%` of your rolling 7-day all-models limit + reset countdown | 10 min |
 | **Weekly (Sonnet)** | `NN%` of your weekly Sonnet limit | 10 min |
 | **Weekly (Claude Design)** | `NN%` of your weekly Claude Design limit | 10 min |
+| **Extra Usage Credits** | `NN%` of your monthly extra credits + `used / limit` in your currency | 10 min |
 
 The percentage flips to coral when over 80%. Tap any key to open `claude.ai/settings/usage` in your browser. If the data fetch fails, the key turns into a coral `!`.
 
@@ -25,9 +26,9 @@ The numbers come straight from Anthropic's own usage endpoint — the same data 
 1. Download `com.aaronholt.claude-usage.streamDeckPlugin` from the Releases page (or build it yourself — see below).
 2. Double-click. Stream Deck offers to install it.
 3. In the Stream Deck app, find the **Claude Usage** category in the right sidebar.
-4. Drag the four actions onto adjacent keys.
+4. Drag the five actions onto adjacent keys.
 
-The session key fills in within a few seconds; the weekly keys within 10 minutes. (One HTTP call covers all four, shared via an in-memory cache.)
+The session key fills in within a few seconds; the weekly keys within 10 minutes. (One HTTP call covers all five, shared via an in-memory cache.)
 
 ### Build from source
 
@@ -51,7 +52,7 @@ Authorization: Bearer <accessToken from ~/.claude/.credentials.json>
 anthropic-beta: oauth-2025-04-20
 ```
 
-The response contains `five_hour`, `seven_day`, `seven_day_sonnet`, and `seven_day_omelette` (Anthropic's internal codename for Claude Design), each with `{ utilization, resets_at }`. The plugin caches the response for 10 minutes and shares it across all four keys. If the access token is close to expiring, or a request returns 401, the plugin refreshes against `https://console.anthropic.com/v1/oauth/token` using the stored `refreshToken` and writes the new credentials back.
+The response contains `five_hour`, `seven_day`, `seven_day_sonnet`, `seven_day_omelette` (Anthropic's internal codename for Claude Design), and `extra_usage` (monthly pay-as-you-go credits) — each with `{ utilization, resets_at }` (and `currency`/`used_credits`/`monthly_limit` for the extras). The plugin caches the response for 10 minutes and shares it across all five keys. If the access token is close to expiring, or a request returns 401, the plugin refreshes against `https://console.anthropic.com/v1/oauth/token` using the stored `refreshToken` and writes the new credentials back.
 
 The endpoint is undocumented and heavily rate-limited, which is why polling is conservative.
 
