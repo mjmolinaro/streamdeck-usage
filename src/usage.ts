@@ -8,6 +8,12 @@ const USAGE_URL = "https://api.anthropic.com/api/oauth/usage";
 const REFRESH_URL = "https://console.anthropic.com/v1/oauth/token";
 const BETA_HEADER = "oauth-2025-04-20";
 const CACHE_TTL_MS = 3 * 60_000;
+// Public OAuth client id used by Claude Code. Required field for refresh
+// requests against console.anthropic.com.
+const CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e";
+// When refresh fails, wait this long before trying again. Keeps a broken
+// token from hammering the refresh endpoint and getting us 429'd.
+const REFRESH_FAILURE_COOLDOWN_MS = 15 * 60_000;
 
 type Bucket = { utilization: number; resets_at: string | null } | null;
 
@@ -45,6 +51,7 @@ export type Result<T> = Ok<T> | Err;
 
 let cached: { value: Result<UsageResponse>; fetchedAt: number } | undefined;
 let inflight: Promise<Result<UsageResponse>> | undefined;
+let refreshCooldownUntil = 0;
 
 async function readCredentials(): Promise<Credentials> {
   const raw = await readFile(CREDENTIALS_PATH, "utf8");
@@ -56,15 +63,21 @@ async function writeCredentials(creds: Credentials): Promise<void> {
 }
 
 async function refreshAccessToken(creds: Credentials): Promise<Credentials> {
+  if (Date.now() < refreshCooldownUntil) {
+    const wait = Math.round((refreshCooldownUntil - Date.now()) / 1000);
+    throw new Error(`refresh on cooldown for ${wait}s — re-launch Claude Code to repair credentials`);
+  }
   const res = await fetch(REFRESH_URL, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
       grant_type: "refresh_token",
       refresh_token: creds.claudeAiOauth.refreshToken,
+      client_id: CLIENT_ID,
     }),
   });
   if (!res.ok) {
+    refreshCooldownUntil = Date.now() + REFRESH_FAILURE_COOLDOWN_MS;
     throw new Error(`refresh failed: HTTP ${res.status} ${await res.text()}`);
   }
   const body = (await res.json()) as {
@@ -81,6 +94,7 @@ async function refreshAccessToken(creds: Credentials): Promise<Credentials> {
     },
   };
   await writeCredentials(updated);
+  refreshCooldownUntil = 0;
   streamDeck.logger.info("usage: refreshed OAuth access token");
   return updated;
 }
