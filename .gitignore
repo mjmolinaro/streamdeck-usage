@@ -1,0 +1,7 @@
+node_modules/
+com.aaronholt.claude-usage.sdPlugin/bin/
+com.aaronholt.claude-usage.sdPlugin/logs/
+*.streamDeckPlugin
+*.log
+.DS_Store
+Thumbs.db

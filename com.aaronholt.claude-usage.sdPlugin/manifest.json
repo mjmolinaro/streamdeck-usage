@@ -1,0 +1,116 @@
+{
+  "Name": "Claude Usage",
+  "Version": "1.0.0.0",
+  "Author": "Aaron Holt",
+  "Description": "Live Claude Code usage on three keys: current 5-hour session percent, weekly all-models cost, and weekly Sonnet cost.",
+  "Icon": "imgs/plugin/marketplace",
+  "Category": "Claude Usage",
+  "CategoryIcon": "imgs/plugin/category",
+  "CodePath": "bin/plugin.js",
+  "SDKVersion": 2,
+  "Software": {
+    "MinimumVersion": "6.5"
+  },
+  "OS": [
+    {
+      "Platform": "windows",
+      "MinimumVersion": "10"
+    },
+    {
+      "Platform": "mac",
+      "MinimumVersion": "12"
+    }
+  ],
+  "Nodejs": {
+    "Version": "20",
+    "Debug": "enabled"
+  },
+  "UUID": "com.aaronholt.claude-usage",
+  "Actions": [
+    {
+      "Name": "Current Session",
+      "UUID": "com.aaronholt.claude-usage.current",
+      "Icon": "imgs/actions/current/icon",
+      "Tooltip": "Percent of your current 5-hour Claude session consumed (matches claude.ai Settings).",
+      "Controllers": [
+        "Keypad"
+      ],
+      "SupportedInMultiActions": false,
+      "States": [
+        {
+          "Image": "imgs/actions/current/key",
+          "TitleAlignment": "middle",
+          "ShowTitle": false
+        }
+      ]
+    },
+    {
+      "Name": "Weekly (All Models)",
+      "UUID": "com.aaronholt.claude-usage.weekly-all",
+      "Icon": "imgs/actions/weekly-all/icon",
+      "Tooltip": "Percent of your weekly all-models limit consumed.",
+      "Controllers": [
+        "Keypad"
+      ],
+      "SupportedInMultiActions": false,
+      "States": [
+        {
+          "Image": "imgs/actions/weekly-all/key",
+          "TitleAlignment": "middle",
+          "ShowTitle": false
+        }
+      ]
+    },
+    {
+      "Name": "Weekly (Sonnet)",
+      "UUID": "com.aaronholt.claude-usage.weekly-sonnet",
+      "Icon": "imgs/actions/weekly-sonnet/icon",
+      "Tooltip": "Percent of your weekly Sonnet limit consumed.",
+      "Controllers": [
+        "Keypad"
+      ],
+      "SupportedInMultiActions": false,
+      "States": [
+        {
+          "Image": "imgs/actions/weekly-sonnet/key",
+          "TitleAlignment": "middle",
+          "ShowTitle": false
+        }
+      ]
+    },
+    {
+      "Name": "Weekly (Claude Design)",
+      "UUID": "com.aaronholt.claude-usage.claude-design",
+      "Icon": "imgs/actions/claude-design/icon",
+      "Tooltip": "Percent of your weekly Claude Design limit consumed.",
+      "Controllers": [
+        "Keypad"
+      ],
+      "SupportedInMultiActions": false,
+      "States": [
+        {
+          "Image": "imgs/actions/claude-design/key",
+          "TitleAlignment": "middle",
+          "ShowTitle": false
+        }
+      ]
+    },
+    {
+      "Name": "Extra Usage Credits",
+      "UUID": "com.aaronholt.claude-usage.extra-usage",
+      "Icon": "imgs/actions/extra-usage/icon",
+      "Tooltip": "Percent of your monthly extra-usage credits consumed.",
+      "Controllers": [
+        "Keypad"
+      ],
+      "SupportedInMultiActions": false,
+      "States": [
+        {
+          "Image": "imgs/actions/extra-usage/key",
+          "TitleAlignment": "middle",
+          "ShowTitle": false
+        }
+      ]
+    }
+  ]
+}
