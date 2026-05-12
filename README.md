@@ -19,7 +19,9 @@ The numbers come straight from Anthropic's own usage endpoint — the same data 
 ### Requirements
 
 - [Stream Deck app](https://www.elgato.com/downloads) 6.5 or newer (Windows 10+ or macOS 12+)
-- A signed-in Claude Code installation on the same machine. The plugin reads your OAuth token from `~/.claude/.credentials.json`; if you've used Claude Code recently, it's there.
+- **[Claude Code](https://docs.claude.com/en/docs/claude-code) installed and signed in on the same machine.** The plugin reads your OAuth token from `~/.claude/.credentials.json`, which Claude Code writes the first time you log in.
+
+> ⚠️ **Claude Code is *not* the same product as Claude Desktop.** Claude Desktop (the chat app) stores credentials in your OS keychain, not in a JSON file, so the plugin can't read them. If you only have Claude Desktop installed, run `npm install -g @anthropic-ai/claude-code` and then `claude` to log in — that creates the file the plugin needs. Your Claude Desktop and claude.ai sign-ins are unaffected, and the limits Claude Code sees are the same account-wide limits the plugin will display.
 
 ### Install the packaged plugin
 
