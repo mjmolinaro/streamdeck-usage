@@ -7,7 +7,7 @@ const CREDENTIALS_PATH = join(homedir(), ".claude", ".credentials.json");
 const USAGE_URL = "https://api.anthropic.com/api/oauth/usage";
 const REFRESH_URL = "https://console.anthropic.com/v1/oauth/token";
 const BETA_HEADER = "oauth-2025-04-20";
-const CACHE_TTL_MS = 10 * 60_000;
+const CACHE_TTL_MS = 3 * 60_000;
 
 type Bucket = { utilization: number; resets_at: string | null } | null;
 

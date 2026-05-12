@@ -11,7 +11,7 @@ import { getUsage } from "../usage.js";
 import { formatPercent, formatResetsIn, renderError, renderKey, renderLoading } from "../render.js";
 import { openSettings } from "../open-settings.js";
 
-const REFRESH_MS = 10 * 60_000;
+const REFRESH_MS = 3 * 60_000;
 
 type Settings = JsonObject;
 

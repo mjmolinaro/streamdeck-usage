@@ -4,7 +4,7 @@ Five Stream Deck keys mirroring the **Plan usage limits** panel on `claude.ai/se
 
 | Key | Shows | Refresh |
 |---|---|---|
-| **Current Session** | `NN%` of your active 5-hour session + reset countdown | 10 min |
+| **Current Session** | `NN%` of your active 5-hour session + reset countdown | 3 min |
 | **Weekly (All Models)** | `NN%` of your rolling 7-day all-models limit + reset countdown | 10 min |
 | **Weekly (Sonnet)** | `NN%` of your weekly Sonnet limit | 10 min |
 | **Weekly (Claude Design)** | `NN%` of your weekly Claude Design limit | 10 min |
@@ -28,7 +28,7 @@ The numbers come straight from Anthropic's own usage endpoint — the same data 
 3. In the Stream Deck app, find the **Claude Usage** category in the right sidebar.
 4. Drag the five actions onto adjacent keys.
 
-The session key fills in within a few seconds; the weekly keys within 10 minutes. (One HTTP call covers all five, shared via an in-memory cache.)
+The session key fills in within a few seconds and refreshes every 3 minutes; the weekly keys check on a 10-minute schedule but ride along on the session refresh whenever it happens — one HTTP call covers all five, shared via an in-memory cache.
 
 ### Build from source
 
@@ -54,7 +54,7 @@ anthropic-beta: oauth-2025-04-20
 
 The response contains `five_hour`, `seven_day`, `seven_day_sonnet`, `seven_day_omelette` (Anthropic's internal codename for Claude Design), and `extra_usage` (monthly pay-as-you-go credits) — each with `{ utilization, resets_at }` (and `currency`/`used_credits`/`monthly_limit` for the extras). The plugin caches the response for 10 minutes and shares it across all five keys. If the access token is close to expiring, or a request returns 401, the plugin refreshes against `https://console.anthropic.com/v1/oauth/token` using the stored `refreshToken` and writes the new credentials back.
 
-The endpoint is undocumented and heavily rate-limited, which is why polling is conservative.
+The endpoint is undocumented and heavily rate-limited, which is why polling is conservative (default: one shared HTTP call every 3 minutes).
 
 ## Privacy
 
@@ -64,7 +64,7 @@ The plugin only reads `~/.claude/.credentials.json` and only sends those credent
 
 - Classic Stream Deck devices only (MK.2, XL, Mini, Neo). Stream Deck Plus dial/touch-strip support is not implemented.
 - Anthropic's usage endpoint is undocumented and may change or break without notice.
-- The endpoint rate-limits aggressively if polled faster than ~once per minute. The fixed 10-minute cache exists to stay well below that ceiling.
+- The endpoint rate-limits aggressively if polled faster than ~once per minute. The default 3-minute cache stays well below that ceiling.
 
 ## Develop
 
