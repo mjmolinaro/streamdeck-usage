@@ -7,7 +7,7 @@ import {
   type WillAppearEvent,
   type WillDisappearEvent,
 } from "@elgato/streamdeck";
-import { getUsage } from "../usage.js";
+import { getUsage, invalidateUsageCache } from "../usage.js";
 import { formatPercent, formatResetsIn, renderError, renderKey, renderLoading } from "../render.js";
 import { openSettings } from "../open-settings.js";
 
@@ -35,7 +35,12 @@ export class CurrentSessionAction extends SingletonAction<Settings> {
     this.timers.delete(ev.action.id);
   }
 
-  override async onKeyDown(_ev: KeyDownEvent<Settings>): Promise<void> {
+  override async onKeyDown(ev: KeyDownEvent<Settings>): Promise<void> {
+    // Tap forces a fresh fetch — useful for recovery after sleep — and
+    // opens the Settings page. Fire both in parallel so the user isn't
+    // waiting on the network call.
+    invalidateUsageCache();
+    if (ev.action.isKey()) void this.tick(ev.action);
     await openSettings();
   }
 

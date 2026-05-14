@@ -11,9 +11,13 @@ const CACHE_TTL_MS = 3 * 60_000;
 // Public OAuth client id used by Claude Code. Required field for refresh
 // requests against console.anthropic.com.
 const CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e";
-// When refresh fails, wait this long before trying again. Keeps a broken
-// token from hammering the refresh endpoint and getting us 429'd.
+// When refresh fails with a real auth/format error, wait this long before
+// trying again. Keeps a broken token from hammering the refresh endpoint
+// and getting us 429'd. Network errors don't trigger a cooldown.
 const REFRESH_FAILURE_COOLDOWN_MS = 15 * 60_000;
+// If the last successful fetch was longer than this ago, assume the machine
+// just woke from sleep and clear any active cooldown so we can recover fast.
+const SLEEP_GAP_MS = 30 * 60_000;
 
 type Bucket = { utilization: number; resets_at: string | null } | null;
 
@@ -52,6 +56,7 @@ export type Result<T> = Ok<T> | Err;
 let cached: { value: Result<UsageResponse>; fetchedAt: number } | undefined;
 let inflight: Promise<Result<UsageResponse>> | undefined;
 let refreshCooldownUntil = 0;
+let lastSuccessAt = 0;
 
 async function readCredentials(): Promise<Credentials> {
   const raw = await readFile(CREDENTIALS_PATH, "utf8");
@@ -67,18 +72,31 @@ async function refreshAccessToken(creds: Credentials): Promise<Credentials> {
     const wait = Math.round((refreshCooldownUntil - Date.now()) / 1000);
     throw new Error(`refresh on cooldown for ${wait}s — re-launch Claude Code to repair credentials`);
   }
-  const res = await fetch(REFRESH_URL, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      grant_type: "refresh_token",
-      refresh_token: creds.claudeAiOauth.refreshToken,
-      client_id: CLIENT_ID,
-    }),
-  });
-  if (!res.ok) {
+  let res: Response;
+  try {
+    res = await fetch(REFRESH_URL, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        grant_type: "refresh_token",
+        refresh_token: creds.claudeAiOauth.refreshToken,
+        client_id: CLIENT_ID,
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
+  } catch (e) {
+    // Network error / timeout — likely a transient post-wake hiccup.
+    // Don't apply the long cooldown; let the next tick retry naturally.
+    throw new Error(`refresh network error: ${(e as Error).message}`);
+  }
+  if (res.status >= 400 && res.status < 500) {
+    // Genuine auth/format problem — cooldown is appropriate.
     refreshCooldownUntil = Date.now() + REFRESH_FAILURE_COOLDOWN_MS;
     throw new Error(`refresh failed: HTTP ${res.status} ${await res.text()}`);
+  }
+  if (!res.ok) {
+    // 5xx — server-side blip, treat as transient (no cooldown).
+    throw new Error(`refresh server error: HTTP ${res.status}`);
   }
   const body = (await res.json()) as {
     access_token: string;
@@ -151,12 +169,24 @@ async function loadUsage(): Promise<Result<UsageResponse>> {
   return { ok: true, data: res.body as UsageResponse };
 }
 
+export function invalidateUsageCache(): void {
+  cached = undefined;
+  refreshCooldownUntil = 0;
+}
+
 export async function getUsage(): Promise<Result<UsageResponse>> {
   const now = Date.now();
+  // If the last good fetch was a long time ago we probably just woke from
+  // sleep. Drop any active cooldown so the next call retries immediately.
+  if (lastSuccessAt > 0 && now - lastSuccessAt > SLEEP_GAP_MS && refreshCooldownUntil > now) {
+    streamDeck.logger.info("usage: long gap since last success, clearing refresh cooldown");
+    refreshCooldownUntil = 0;
+  }
   if (cached && now - cached.fetchedAt < CACHE_TTL_MS) return cached.value;
   if (inflight) return inflight;
 
   inflight = loadUsage().then((value) => {
+    if (value.ok) lastSuccessAt = Date.now();
     // Only overwrite cache on success, or if there's no prior good value
     if (value.ok || !cached?.value.ok) {
       cached = { value, fetchedAt: Date.now() };

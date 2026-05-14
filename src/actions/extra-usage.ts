@@ -7,7 +7,7 @@ import {
   type WillAppearEvent,
   type WillDisappearEvent,
 } from "@elgato/streamdeck";
-import { getUsage } from "../usage.js";
+import { getUsage, invalidateUsageCache } from "../usage.js";
 import {
   formatPercent,
   formatUsedOfLimit,
@@ -41,7 +41,9 @@ export class ExtraUsageAction extends SingletonAction<Settings> {
     this.timers.delete(ev.action.id);
   }
 
-  override async onKeyDown(_ev: KeyDownEvent<Settings>): Promise<void> {
+  override async onKeyDown(ev: KeyDownEvent<Settings>): Promise<void> {
+    invalidateUsageCache();
+    if (ev.action.isKey()) void this.tick(ev.action);
     await openSettings();
   }
 
