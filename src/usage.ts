@@ -1,9 +1,17 @@
+import { execFile, spawn } from "node:child_process";
 import { readFile, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
+import { homedir, platform, userInfo } from "node:os";
 import { join } from "node:path";
+import { promisify } from "node:util";
 import streamDeck from "@elgato/streamdeck";
 
+const execFileAsync = promisify(execFile);
+
 const CREDENTIALS_PATH = join(homedir(), ".claude", ".credentials.json");
+// macOS keychain entry written by current Claude Code. The plugin reads
+// from here first on darwin, falling back to the file for older Claude
+// Code or non-macOS platforms.
+const KEYCHAIN_SERVICE = "Claude Code-credentials";
 const USAGE_URL = "https://api.anthropic.com/api/oauth/usage";
 const REFRESH_URL = "https://console.anthropic.com/v1/oauth/token";
 const BETA_HEADER = "oauth-2025-04-20";
@@ -58,13 +66,82 @@ let inflight: Promise<Result<UsageResponse>> | undefined;
 let refreshCooldownUntil = 0;
 let lastSuccessAt = 0;
 
-async function readCredentials(): Promise<Credentials> {
+// Track which source provided the credentials so refreshed tokens go back
+// to the same place. Otherwise the plugin and Claude Code diverge.
+type CredSource = "keychain" | "file";
+let credSource: CredSource = "file";
+
+async function readKeychainCredentials(): Promise<Credentials> {
+  const { stdout } = await execFileAsync("/usr/bin/security", [
+    "find-generic-password",
+    "-s", KEYCHAIN_SERVICE,
+    "-a", userInfo().username,
+    "-w",
+  ]);
+  return JSON.parse(stdout.trim()) as Credentials;
+}
+
+async function writeKeychainCredentials(creds: Credentials): Promise<void> {
+  // `-w` with no value makes `security` read the password from stdin instead
+  // of argv, keeping the token out of the process table. It prompts twice for
+  // confirmation, so feed the secret twice; JSON.stringify never emits a raw
+  // newline, so the line delimiter is unambiguous.
+  const secret = JSON.stringify(creds);
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn("/usr/bin/security", [
+      "add-generic-password",
+      "-s", KEYCHAIN_SERVICE,
+      "-a", userInfo().username,
+      "-U",
+      "-w",
+    ]);
+    child.on("error", reject);
+    child.on("close", (code) =>
+      code === 0 ? resolve() : reject(new Error(`security exited with code ${code}`)),
+    );
+    child.stdin.write(`${secret}\n${secret}\n`);
+    child.stdin.end();
+  });
+}
+
+async function readFileCredentials(): Promise<Credentials> {
   const raw = await readFile(CREDENTIALS_PATH, "utf8");
   return JSON.parse(raw) as Credentials;
 }
 
-async function writeCredentials(creds: Credentials): Promise<void> {
+async function writeFileCredentials(creds: Credentials): Promise<void> {
   await writeFile(CREDENTIALS_PATH, JSON.stringify(creds, null, 2), "utf8");
+}
+
+async function readCredentials(): Promise<Credentials> {
+  if (platform() === "darwin") {
+    try {
+      const creds = await readKeychainCredentials();
+      if (creds.claudeAiOauth) {
+        credSource = "keychain";
+        return creds;
+      }
+    } catch {
+      // Keychain miss or access denied — fall through to file.
+    }
+  }
+
+  const creds = await readFileCredentials();
+  if (!creds.claudeAiOauth) {
+    throw new Error(
+      "no claudeAiOauth in credentials — run `claude auth login --claudeai` to sign in to a Claude subscription",
+    );
+  }
+  credSource = "file";
+  return creds;
+}
+
+async function writeCredentials(creds: Credentials): Promise<void> {
+  if (credSource === "keychain") {
+    await writeKeychainCredentials(creds);
+  } else {
+    await writeFileCredentials(creds);
+  }
 }
 
 async function refreshAccessToken(creds: Credentials): Promise<Credentials> {
