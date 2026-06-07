@@ -7,7 +7,7 @@ End-user docs live in `README.md`. This file is for AI-assistant context on top 
 A Stream Deck plugin (TypeScript → rollup → Node bundle) that shows Claude Code subscription usage on five keys. Maintained as a personal fork:
 
 - `origin` = `mjmolinaro/streamdeck-usage` (Marc's fork — where work lands)
-- `upstream` = `Darhkfox/streamdeckclaude` (sync source; itself a fork of Aaron Holt's original)
+- `upstream` = `Darhkfox/streamdeckclaude` (sync source; not itself a GitHub fork — bundle metadata credits Aaron Holt as author and the bundle ID is `com.aaronholt.claude-usage`, but every commit in the repo is by Darhkfox and the relationship between the two names is undocumented; most likely they're the same person)
 
 When syncing from upstream: fast-forward `main`, push to `origin`, then rebase feature branches onto the new `main`. The upstream and our `main` are linear by convention — never merge-commit a sync.
 
